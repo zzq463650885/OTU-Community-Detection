@@ -1,4 +1,4 @@
-# -*- coding:utf-8 -*-
+# -*- coding:gb2312-*-
 
 import numpy as np
 import pandas as pd
@@ -101,6 +101,7 @@ def get_pearson_network( in_table, out_file_name, num_filter, ids=[] ):
     
     # for i in range(30):                             # 测试
     for i in range(m):
+        count_neighbours = 0
         for j in range(i+1,m):                      # 只计算上三角矩阵
             sum = 0
             for k in range(n):
@@ -110,7 +111,8 @@ def get_pearson_network( in_table, out_file_name, num_filter, ids=[] ):
             neg_filter = -1*num_filter
             if sum > num_filter or sum < neg_filter :
                 G.add_edge(i,j)
-        print('node i:'+str(i))                     # i ok
+                count_neighbours += 1
+        print('node i:{}, neighbours: {}'.format(i,count_neighbours))                     # i ok
         
     nx.write_adjlist(G, out_file_name)              # 理应 4万多行(不去除离群点45738行) * 若干列
     print('network saved')
@@ -145,21 +147,20 @@ def remove_outliers():
 
 
 def order2graph():
-    in_prefix = './bio30ps_embds/embd_'
-    out_prefix = './od2graphs/'
+    in_prefix = '../features/'
+    out_prefix = './graphs/'
     embds = ['dpwk','line','n2v','lle']
     in_file_names = [ in_prefix + i + '.txt' for i in embds  ]
     out_file_names = [ out_prefix + i + '.adjlist' for i in embds  ]
     
-    left_idxs = [2,3]
+    left_idxs = [1,2]
     for i in left_idxs: 
     # for i in range(len(in_file_names)):           # 4个二阶网络,i是文件索引
     # for i in range(1):                              # 测试
         file_name = in_file_names[i]
         print('{} running...'.format(file_name))
         with open(file_name, 'r') as f:             # 读取embeddings文件，放到容器里
-            line = f.readline()
-            m, n = [ int(x) for x in line.split() ]
+            m, n = 25023, 128
             print('file:{} rows:{} cols:{}'.format(file_name,m,n))
             in_table = []                           # 读入向量
             nums = []                               # 节点序号
@@ -168,14 +169,12 @@ def order2graph():
             # for j in range(15):
                 line = f.readline()
                 curr_str_list = line.split()        # 去除第一个otu名
-                otu_id = int(curr_str_list[0])
                 numbers = [ float(x) for x in curr_str_list[1:] ]
                 in_table.append(numbers)
-                nums.append(otu_id)
             # print(in_table)
         
         
-        G = get_pearson_network(in_table, out_file_names[i], 0.5)
+        G = get_pearson_network(in_table, out_file_names[i], 0.7 )
             
         print(G.number_of_nodes())          # 
         print(G.number_of_edges())

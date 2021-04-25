@@ -6,11 +6,15 @@ import scipy.sparse as sp
 import h5py
 import torch
 from torch.utils.data import Dataset
+from sklearn.metrics.pairwise import cosine_similarity as cos
+from sklearn.metrics import pairwise_distances as pair
+from sklearn.preprocessing import normalize
+from tqdm import tqdm
 
 # 功能：按行标准化稀疏矩阵
 # 输入：普通sp.coo_matrix
 # 输出：行标准化sp.coo_matrix
-def normalize(mx):
+def coo_normalize(mx):
     rowsum = np.array(mx.sum(1))
     r_inv = np.power(rowsum, -1).flatten()
     r_inv[np.isinf(r_inv)] = 0.
@@ -42,16 +46,16 @@ def load_edgelist_graph( name ):
     edges = np.array(list(map(idx_map.get, edges_unordered.flatten())),
                      dtype=np.int32).reshape(edges_unordered.shape)
     adj = sp.coo_matrix((np.ones(edges.shape[0]), (edges[:, 0], edges[:, 1])),
-                        shape=(n, n), dtype=np.float32)
+                        shape=(num_of_nodes, num_of_nodes), dtype=np.float32)
     # build symmetric adjacency matrix
     adj = adj + adj.T.multiply(adj.T > adj) - adj.multiply(adj.T > adj)
     adj = adj + sp.eye(adj.shape[0])
-    adj = normalize(adj)
+    adj = coo_normalize(adj)
     # dense,csr matrix
-    adj_dense = adj.todense()
+    # adj_dense = adj.todense()
     adj_csr = adj.tocsr()
-    adj = sparse_mx_to_torch_sparse_tensor(adj)
-    return adj,adj_csr, adj_dense
+    # adj = sparse_mx_to_torch_sparse_tensor(adj)
+    return adj_csr
 
 # 功能：读有序的adjlist图
 # 输入：graph路径名，如 'bio30_ps.adjlist'(25023 nodes,968659 edges) 
@@ -108,17 +112,60 @@ def preproc_embds_2_ordered():
             x[idx] = feature
         np.savetxt( out_fname, x )
 
+# 功能：k近邻图构建
+# 输入：features文件名
+# 输出：adjlist格式k近邻图, edjlist格式k近邻图
+# def construct_graph(features, label, method='heat'):
+def construct_graph(name, method='heat'):
+    topk = 30
+    in_fname = './features/' + name + '.txt'
+    edgelist_fname = './graphs_kneighbour/' + name + str(topk) + '.edgelist'
+    adjlist_fname = './graphs_kneighbour/' + name + str(topk) + '.adjlist'
+    # num = len(label)  
+    dist = None
+    features = np.loadtxt(in_fname, dtype=float)
+    if method == 'heat':
+        dist = -0.5 * pair(features) ** 2
+        dist = np.exp(dist)
+    elif method == 'cos':
+        features[features > 0] = 1
+        dist = np.dot(features, features.T)
+    elif method == 'ncos':
+        # features[features > 0] = 1
+        features = normalize(features, axis=1, norm='l1')
+        dist = np.dot(features, features.T)
+    inds = []
+    for i in tqdm(range(dist.shape[0])):
+        ind = np.argpartition(dist[i, :], -(topk+1))[-(topk+1):]
+        inds.append(ind)
+    G = nx.Graph() 
+    G.add_nodes_from(np.arange(25023))
+    f = open(edgelist_fname, 'w')
+    # counter = 0
+    A = np.zeros_like(dist)
+    for i, v in tqdm(enumerate(inds)):
+        mutual_knn = False
+        for vv in v:
+            if vv == i:
+                pass
+            else:
+                f.write('{} {}\n'.format(i, vv))
+                G.add_edge(i, vv)
+    f.close()
+    nx.write_adjlist(G, adjlist_fname)     
+        
 # 功能：adjlist文件转换为edgelist文件
 # 输入：dpwk.adjlist
 # 输出：dpwk.edgelist, 如 0 1 \n0 6
 def myadj2edg():
     names = ['dpwk','line','lle','n2v']
     for name in names:
-        in_fname = '../od2graphs/' + name + '.adjlist'
-        out_fname = '../mygraph/' + name + '_edgelist.txt'
+        in_fname = './graphs/' + name + '.adjlist'
+        out_fname = './graphs/' + name + '.edgelist'
         edges = []
         with open( in_fname, 'r' ) as f:
             print( '{} reading...'.format(in_fname) )
+            # 跳过3行dajlist文件注释
             for i in range(3):
                 line = f.readline()
             while True:
@@ -135,32 +182,33 @@ def myadj2edg():
 # 功能：合并相似度图和最近邻图
 # 输入：bio30.adjlist  order1graph.adjlist
 # 输出：bio30ps.txt    bio30ps.adjlist
-def merge_graphs():
-    fname1 = './mygraph/bio30.adjlist'
-    fname2 = './mygraph/order1graph.adjlist'
-    out_fname = './mygraph/bio30_ps.adjlist'
-    out_fname2 = './mygraph/bio30_ps.txt'
+def merge_graphs(name):
+    topk = 30
+    in_fname1 = './graphs_pearson/'+name+'.adjlist'
+    in_fname2 = './graphs_kneighbour/'+name+ str(topk) + '.adjlist'
+    out_adj_fname = './graphs_merged/' + name + '.adjlist'
+    out_edge_fname = './graphs_merged/' + name + '.edgelist'
     
-    f = open(out_fname2,'w')
-    G1 = nx.read_adjlist(fname1)         
-    G2 = nx.read_adjlist(fname2)    
-    print('G1:{} & G2:{} graphs merging...'.format(fname1,fname2))
+    G1 = nx.read_adjlist(in_fname1)         
+    G2 = nx.read_adjlist(in_fname2)    
+    print('G1:{} & G2:{} graphs merging...'.format(in_fname1,in_fname2))
     print('before:G1 edges:{},G2 edges:{}'.format(G1.number_of_edges(),G2.number_of_edges()))
     
-    G_merge = nx.Graph()        # for sorted graph
-    G_merge.add_nodes_from( G1.nodes() )
-    for eg in G1.edges():           
-        G_merge.add_edge(eg[0],eg[1])
-    for eg in G2.edges():           
-        G_merge.add_edge(eg[0],eg[1])
+    # for sorted graph
+    G_merge = nx.Graph()        
+    f = open(out_edge_fname,'w')
+    G_merge.add_nodes_from( np.arange(G1.number_of_nodes() ) )
+    for eg in tqdm(G1.edges()):           
+        G_merge.add_edge((int)(eg[0]),(int)(eg[1]))
+        G_merge.add_edge((int)(eg[1]),(int)(eg[0]))
+    for eg in tqdm(G2.edges()):           
+        G_merge.add_edge((int)(eg[0]),(int)(eg[1]))
+        G_merge.add_edge((int)(eg[1]),(int)(eg[0]))
     print('after:G_merge edges:{}'.format(G_merge.number_of_edges()))
-    nx.write_adjlist(G_merge,out_fname)  # write to adjlist file
+    nx.write_adjlist(G_merge,out_adj_fname)  # write to adjlist file
     for eg in G_merge.edges():
         f.write('{} {}\n'.format(eg[0],eg[1]))
-    f.close()       # open & close
-    
-    print('graphs merge over')
-    print('nodes:G1:{},G2:{}'.format(G1.number_of_nodes(),G2.number_of_nodes()))
+    f.close()       
     
 # 功能：数值不变，.csv文件转换为 .txt文件
 # 输入：bio72.csv
@@ -171,7 +219,7 @@ def csv2txt():
     df = pd.read_csv(in_fname, header= 0, index_col= 0)
     x = np.array(df)
     np.savetxt(out_fname, x)
-
+    
 # 功能：测试utils内部函数
 if __name__ == '':
     pass
