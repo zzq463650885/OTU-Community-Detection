@@ -1,5 +1,6 @@
 import numpy as np
 import networkx as nx
+from tqdm import tqdm
 
 # 功能：利用矩阵对称性作下三角优化处理的图模块度计算函数
 # 输入：有序的nx.graph, 有序的y_pred
@@ -12,8 +13,8 @@ def symmetric_matrix_modularity(G, y_pred):
     Q = 0.0
     print('number of edges:{}'.format(m))
     print('i:{},node_i:{}'.format(233, V[233] ))
-    for i in range(n):
-        print('\rmodularity running node:{},now 2*m*modularity:{:8.8f}'.format(i,Q),end='')
+    for i in tqdm(range(n)):
+        # print('\rmodularity running node:{},now Q:{:8.8f}'.format(i,Q),end='')
         node_i = V[i]                     
         com_i = y_pred[int(node_i)]                         # node->com_i
         degree_i = G.degree(node_i)

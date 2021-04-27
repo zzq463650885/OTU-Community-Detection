@@ -3,38 +3,12 @@ graduate python files
 
 ## 代码
 ```
+本文的主要理论基础来源于 基于网络嵌入方法的肠道微生物组大数据网络分析 [J]
 使用了SDCN、NOCD、openne库等的开源代码。
 https://github.com/thunlp/OpenNE
 https://github.com/shchur/overlapping-community-detection
 https://github.com/bdy9527/SDCN
 ```
-
-论文请添加openne库的cites及以下cites:
-```
-@inproceedings{sdcn2020,
-  author    = {Deyu Bo and
-               Xiao Wang and
-               Chuan Shi and
-               Meiqi Zhu and
-               Emiao Lu and
-               Peng Cui},
-  title     = {Structural Deep Clustering Network},
-  booktitle = {{WWW}},
-  pages     = {1400--1410},
-  publisher = {{ACM} / {IW3C2}},
-  year      = {2020}
-}
-
-@article{
-    shchur2019overlapping,
-    title={Overlapping Community Detection with Graph Neural Networks},
-    author={Oleksandr Shchur and Stephan G\"{u}nnemann},
-    journal={Deep Learning on Graphs Workshop, KDD},
-    year={2019},
-}
-```
-
-
 
 ## 流程
 ```
@@ -80,64 +54,47 @@ towards disconnectivity : robust
 It is a remarkable fact that NOCD is good at disjoint graphs, rather Spectral Cluster, LabelPropogation, SCD, EdMot, GEMSEC don't work at the same time. In other words, NOCD is robust . 
 ```
 
-### 时间消耗
-| Machine Learning tmie | model | GCN time | hidden layer | 
-|:----:|:----:|:----:|:----:|
-| 5 min  | LabelProp | TODO min | [] |
-| 45 min | SCD       | 16 min | [512] |
-| 77 min | EdMot     | TODO min | [512,1024] |
-| 4h     | GEMSEC    | 
-| 3 min  | Spectral  | 
-
-### 分数记录 Total Modularity Records 
-towards 2order pearson graphs, size 0 hidden layer [] : bad  
-
-| name | thresh | Spec_Clt | LabelProp | SCD | EdMot | GEMSEC | nocd | 
-|:----:|:----:| :----: |:----:| :----: | :----:| :----:| :----:|
-| bio72 | ----| 0.4100     |  0.5332   | 0.3128 | 0.0182 | 0.0531 | 0.5397 |
-| dpwk  | 0.5 | 0.6568     |  0.7481   | TODO   | 0.0035 | TODO   | 0.7003   |
-| n2v   | 0.8 | 0.2766(TODO) | TODO | TODO | TODO | TODO | TODO | 
-| lle   | 0.5 | 0.5459(TODO) |  TODO | TODO | TODO | TODO | TODO |
-| line  | 0.7 | 0.4481(TODO) |   TODO | TODO | TODO | TODO | TODO |
+# TODO
+### Total Scores 
+```     
+method     LabelProp    SCD       EdMot     GEMSEC    Spectral    nocd   
+time       5 min        45 min    77 min    4h        3 min               
+bio72      0.5332       0.3128    0.0182    0.0531    0.4100      0.5397                
+dpwk(0.5)  0.7481       0.5534    0.0035    0.4448    0.6568      0.7064  
+n2v(0.8)   0.7435       0.5713    ------    0.4275	  0.6546			  
+lle(0.5)   0.7943       0.6969    ------    0.3922	  0.3614						 
+line(0.7)  0.8429       0.6928    ------    0.5468    0.7289  			  
+```
 
 
-### 分数记录 myNOCD  Hyperparameters & results
 
-#### nocd -> bio72 features & graphs
-| n_cluss | l2_reg | max_epochs | lr | bnl_loss | Z_hist  | modul | cd_plot | hidden_sizes|  
-| :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
-| 8 | 1e-2 | 3000| <1e-4> | 0.4051 | good | 0.4903 | btfl | [512] |
-| 8 | <1e-1> | 1000| 1e-3 | 0.4114 | good | 0.5371 | btfl | [512] |
-| 8 | 1e-2 | 1000| 1e-3 | 0.4090 | good | 0.5358 | btfl | [512] |
-| 8 | 1e-2 | 1000| 1e-3 | 0.3950 | good | 0.5228 | btfl | [512,1024] |
-| 8 | 1e-2 | 1000| 1e-3 | 0.4125 | wdfl | 0.5252 | btfl | [512,512,1024] |
-| 8 | 1e-2 | 1000| 1e-3 | 0.4000 | wdfl | 0.5397 | btfl | [512,512,1024,128] |
-| 8 | 1e-2 | 1000| 1e-3 | 0.4097 | wdfl | 0.5334 | btfl | [512,1024,2048,512,128]  |
 
-#### nocd -> dpwk features & graphs
-| n_cluss | l2_reg | max_epochs | lr | bnl_loss | modul | hidden_sizes| graph_type |
-| :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
-| 8 | 1e-2 | 1000| 1e-3 | 0.2051 | 0.7652 | [512] | pearson | 
-| 8 | 1e-2 | 1000| 1e-3 | 0.2137 | 0.7645 | [512,1024] | pearson | 
-| 8 | 1e-2 | 1000| 1e-3 | 0.2879 | 0.7003 | [512] | merged | 
+### Cites
+论文请添加openne库的cites及以下cites:
+```
+李倩莹, 蔡云鹏, 张凯. 基于网络嵌入方法的肠道微生物组大数据网络分析 [J]. 集成技术, 2019, 8(5): 34-48.
+Li QY, Cai YP, Zhang K. Inferring gut microbial interaction network from microbiome data using network embedding
+algorithm [J]. Journal of Integration Technology, 2019, 8(5): 34-48.
 
-#### nocd -> n2v features & graphs
-| n_cluss | l2_reg | max_epochs | lr | bnl_loss |  modul | hidden_sizes| graph_type |
-| :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | 
-| 8 | 1e-2 | 1000| 1e-3 | 0.1638 | 0.7318 | [512] | pearson |
-| 8 | 1e-2 | 1000| 1e-3 | 0.1648 | 0.7743 | [512,1024] | pearson |
-| 8 | 1e-2 | 1000| 1e-3 | 0.2479 | 0.7189 | [512] | merged | 
+@inproceedings{sdcn2020,
+  author    = {Deyu Bo and
+               Xiao Wang and
+               Chuan Shi and
+               Meiqi Zhu and
+               Emiao Lu and
+               Peng Cui},
+  title     = {Structural Deep Clustering Network},
+  booktitle = {{WWW}},
+  pages     = {1400--1410},
+  publisher = {{ACM} / {IW3C2}},
+  year      = {2020}
+}
 
-#### nocd -> lle features & graphs
-| n_cluss | l2_reg | max_epochs | lr | bnl_loss | modul | hidden_sizes| graph_type |
-| :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: | 
-| 8 | 1e-2 | 1000| 1e-3 | 0.2428 | 0.7626 | [512] | pearson |
-| 8 | 1e-2 | 1000| 1e-3 | 0.2516 | 0.7624 | [512,1024] | pearson |
-| 8 | 1e-2 | 1000| 1e-3 | 0.2605 | 0.7270 | [512] | merged | 
-
-#### nocd -> line features & graphs
-| n_cluss | l2_reg | max_epochs | lr | bnl_loss | modul | hidden_sizes| graph_type |
-| :----: | :----: | :----: | :----: | :----: | :----: | :----: | :----: |
-| 8 | 1e-2 | 1000| 1e-3 | 0.1553 | 0.8207 | [512] | pearson |
-| 8 | 1e-2 | 1000| 1e-3 | 0.1635 | 0.8107 | [512,1024] | pearson |
-| 8 | 1e-2 | 1000| 1e-3 | 0.2260  | 0.7955 | [512] | merged | 
+@article{
+    shchur2019overlapping,
+    title={Overlapping Community Detection with Graph Neural Networks},
+    author={Oleksandr Shchur and Stephan G\"{u}nnemann},
+    journal={Deep Learning on Graphs Workshop, KDD},
+    year={2019},
+}
+```

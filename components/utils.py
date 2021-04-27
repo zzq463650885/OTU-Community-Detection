@@ -35,10 +35,9 @@ def sparse_mx_to_torch_sparse_tensor(sparse_mx):
     return torch.sparse.FloatTensor(indices, values, shape)
 
 # 功能：加载degelist格式的graph
-# 输入：图的名字，如'bio72'，'dpwk'
+# 输入：degelist格式图文件的路径
 # 输出：coo矩阵，csr矩阵，adj矩阵
-def load_edgelist_graph( name ):
-    path = './graphs/' + name + '.edgelist'
+def load_edgelist_graph( path ):
     num_of_nodes = 25023           
     idx = np.array([i for i in range(num_of_nodes)], dtype=np.int32)
     idx_map = {j: i for i, j in enumerate(idx)}
@@ -63,18 +62,19 @@ def load_edgelist_graph( name ):
 def load_ordered_adjlist_graph( fname ):
     G_nx = nx.read_adjlist(fname)
     G = nx.Graph() 
-    print('initial G nodes {},edges {}'.format( G_nx.number_of_nodes(), G_nx.number_of_edges() ) )
+    # print('initial G nodes {},edges {}'.format( G_nx.number_of_nodes(), G_nx.number_of_edges() ) )
     # node: int  edge: tuple(int, int)
     G.add_nodes_from( np.arange( G_nx.number_of_nodes() ) )        
     # symmetric edges
-    for tup in G_nx.edges():
+    for tup in tqdm(G_nx.edges()):
         elist = list( tup )
         G.add_edge( int(elist[0]),int(elist[1]) )
         G.add_edge( int(elist[1]),int(elist[0]) )
     for node in G_nx.nodes():
         G.add_edge( int(node), int(node) )
     # print( list(G.nodes())[:100]  )
-    print('after G nodes {},edges {}'.format( G.number_of_nodes(), G.number_of_edges() ) )
+    n, m = G.number_of_nodes(), G.number_of_edges()
+    print('G nodes {},edges {} with self-loops read already'.format(n, m))
     return G
 
 # 功能：加载features
@@ -113,11 +113,10 @@ def preproc_embds_2_ordered():
         np.savetxt( out_fname, x )
 
 # 功能：k近邻图构建
-# 输入：features文件名
+# 输入：features文件名, topk值
 # 输出：adjlist格式k近邻图, edjlist格式k近邻图
 # def construct_graph(features, label, method='heat'):
-def construct_graph(name, method='heat'):
-    topk = 30
+def construct_graph(name, topk=30, method='heat'):
     in_fname = './features/' + name + '.txt'
     edgelist_fname = './graphs_kneighbour/' + name + str(topk) + '.edgelist'
     adjlist_fname = './graphs_kneighbour/' + name + str(topk) + '.adjlist'
@@ -182,8 +181,7 @@ def myadj2edg():
 # 功能：合并相似度图和最近邻图
 # 输入：bio30.adjlist  order1graph.adjlist
 # 输出：bio30ps.txt    bio30ps.adjlist
-def merge_graphs(name):
-    topk = 30
+def merge_graphs(name, topk=30):
     in_fname1 = './graphs_pearson/'+name+'.adjlist'
     in_fname2 = './graphs_kneighbour/'+name+ str(topk) + '.adjlist'
     out_adj_fname = './graphs_merged/' + name + '.adjlist'
