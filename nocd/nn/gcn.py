@@ -54,7 +54,7 @@ class GCN(nn.Module):
     def __init__(self, input_dim, hidden_dims, output_dim, dropout=0.5, batch_norm=False):
         super().__init__()
         self.dropout = dropout
-        layer_dims = np.concatenate([hidden_dims, [output_dim]]).astype(np.int32)
+        layer_dims = np.concatenate([hidden_dims, [output_dim]]).astype(np.int32)  # 128-> | 512->17 | 
         self.layers = nn.ModuleList([GraphConvolution(input_dim, layer_dims[0])])
         for idx in range(len(layer_dims) - 1):
             self.layers.append(GraphConvolution(layer_dims[idx], layer_dims[idx + 1]))
@@ -64,13 +64,28 @@ class GCN(nn.Module):
             ]
         else:
             self.batch_norm = None
-
+            
+        # features auto_encoder decoder part
+        x_decoder_hiddens = np.flip(hidden_dims.copy())
+        x_decoder_dims = np.concatenate([x_decoder_hiddens, [input_dim]]).astype(np.int32) #  | 512,128 |
+        self.dec_layers = nn.ModuleList([GraphConvolution(output_dim, x_decoder_dims[0])]) # 17->512
+        for idx in range(len(x_decoder_dims) - 1):                                         # 17->512->128
+            self.dec_layers.append(GraphConvolution(x_decoder_dims[idx], x_decoder_dims[idx + 1])) 
+        if batch_norm:
+            self.dec_batch_norm = [
+                nn.BatchNorm1d(dim, affine=False, track_running_stats=False) for dim in x_decoder_hiddens
+            ]
+        else:
+            self.dec_batch_norm = None
+        
+        
     @staticmethod
     def normalize_adj(adj : sp.csr_matrix):
         """Normalize adjacency matrix and convert it to a sparse tensor."""
         if sp.isspmatrix(adj):
             adj = adj.tolil()
-            adj.setdiag(1)
+            #     adj.setdiag(1) # 0.7274
+            adj.setdiag(adj.sum(1)/100) # low loss 0.216 but low modul 0.717,0.726  ``` 0.7343 ``` 
             adj = adj.tocsr()
             deg = np.ravel(adj.sum(1))
             deg_sqrt_inv = 1 / np.sqrt(deg)
@@ -87,10 +102,22 @@ class GCN(nn.Module):
                 x = sparse_or_dense_dropout(x, p=self.dropout, training=self.training)
             x = gcn(x, adj)
             if idx != len(self.layers) - 1:
-                x = F.relu(x)
+                x = F.relu(x)  # leaky_relu:nan celu:nan bad rrelu:nan prelu:miss w selu:nan
                 if self.batch_norm is not None:
                     x = self.batch_norm[idx](x)
-        return x
+        
+        # feature decoder part
+        x_rec = F.relu(x)
+        for idx, gae in enumerate(self.dec_layers):
+            if self.dropout != 0:
+                x_rec = sparse_or_dense_dropout(x_rec, p=self.dropout, training=self.training)
+            x_rec = gae(x_rec, adj)
+            if idx != len(self.dec_layers) - 1:
+                x_rec = F.relu(x_rec)  # leaky_relu:nan celu:nan bad rrelu:nan prelu:miss w selu:nan
+                if self.dec_batch_norm is not None:
+                    x_rec = self.dec_batch_norm[idx](x_rec)
+        
+        return x, x_rec
 
     def get_weights(self):
         """Return the weight matrices of the model."""
