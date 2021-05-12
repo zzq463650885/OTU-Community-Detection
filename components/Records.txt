@@ -5,17 +5,31 @@
     损失函数优化（谨慎增加新损失函数）
     前向传播公式升级为注意力机制
     使用网格调参法    
+    GCN切比雪夫近似公式微调  lamda_max change
 特征或许可以直接用bio72而不是dpwk数据。(bad)
 louvain 算是目前市面上提到的和使用过的最常用的社区发现算法之一了，除此之外就是     infomap
 增加对比实验方法和最新方法
 
+中期工作创新点： 调整GCN运算、自编码器恢复features(0.7328)(与diag（sum/100）一起0.7291)
+
+# 改修正后邻接矩阵对角线、LeakyReLU
+    # adj.setdiag(1) # 0.7274
+    # adj.setdiag(0.5) # 0.7252, about 71
+    # adj.setdiag(2) # bad 0.64
+    # adj.setdiag(10) # bad dpwk 0.65
+    # adj.setdiag(adj.sum(1)) # 一般 dpwk 0.70  17: 0.6963
+    adj.setdiag(adj.sum(1)/100) # low loss 0.216 but low modul 0.717,0.726  ``` 0.7343 ``` 
+    # adj.setdiag(0.5+adj.sum(1)/200) # 0.7173
+    # adj.setdiag(1+adj.sum(1)/100) #  0.7301 0.7167 0.7003
+
+
 
 # Total Scores         
-    method     EdMot     LabelProp    SCD       GEMSEC    Spectral   Louvain       OTUCD   
+    method     EdMot     LabelProp    SCD       GEMSEC    Spectral   Louvain       NOCD      OTUCD
     time       77 min    5 min        45 min    4h        3 min      2min         
     meta72     0.0182    0.5332       0.3128    0.0531    0.4100     0.5292        0.5371         
-    dpwk(0.5)  0.0035    0.7057       0.5534    0.4448    0.6568     0.6798        0.7274
-    n2v(0.8)   0         0.7260       0.5713    0.4275    0.6546     0.7176        0.7267
+    dpwk(0.5)  0.0035    0.7057       0.5534    0.4448    0.6568     0.6798        0.7274     0.7315
+    n2v(0.8)   0         0.7260       0.5713    0.4275    0.6546     0.7176        0.7267     0.7479
     lle(0.5)   0         0.6881       0.6969    0.3922    0.3614     0.8092        0.7447
     line(0.7)  0         0.7169       0.6928    0.5468    0.7289     0.7812        0.7943
 # Notes
@@ -65,7 +79,7 @@ louvain 算是目前市面上提到的和使用过的最常用的社区发现算
     [0.7147, 0.7154, 0.7138, 0.7181, 0.7173]    [0.7127, 0.7226, 0.7128, 0.7221, 0.7174]
     
 # hidden layer [32]     [64]     [128]     [256]       [512]       [1024]    [2048]    [4096]
-    0.6867   0.6731   0.7071    0.6832      0.7003      0.6902    0.6954    0.6858
+                0.6867   0.6731   0.7071    0.6832      0.7003      0.6902    0.6954    0.6858
 # bad draw batch_size [10000, 20000, 30000, 40000]
     [0.6977, 0.7013, 0.6884, 0.6976]
 # [balance_loss, stochastic_loss] [[True, True], [True, False], [False, True], [False, False]]
@@ -125,6 +139,6 @@ louvain 算是目前市面上提到的和使用过的最常用的社区发现算
 
 
 # Notes of comparation Experiments
-# louvain: 50, 30, 17 to bio72 too low;
+# louvain: 50, 30, 17, 8 to bio72 too low;
 # label prop: 5 to dpwk ok; 4 to n2v ok; 3 to lle 0.6881; 4 to line 0.8075
 3 to n2v  0.6118; 3 to line 0.7169
