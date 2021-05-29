@@ -4,8 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from nocd.nn.gcn import sparse_or_dense_dropout
-from nocd.utils import to_sparse_tensor
+from otucd.nn.gcn import sparse_or_dense_dropout
+from otucd.utils import to_sparse_tensor
 
 __all__ = [
     'ImprovedGCN',
