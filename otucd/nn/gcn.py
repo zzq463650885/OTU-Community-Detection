@@ -85,7 +85,15 @@ class GCN(nn.Module):
         if sp.isspmatrix(adj):
             adj = adj.tolil()
             #     adj.setdiag(1) # 0.7274
-            adj.setdiag(adj.sum(1)/100) # low loss 0.216 but low modul 0.717,0.726  ``` 0.7343 ``` 
+            #     adj.setdiag(10) 
+            
+            # normalized diag( sum^2 )
+            s0, s1 = adj.sum(0), adj.sum(1)
+            print( 's0 shape:{}, s1 shape:{}'.format(s0.shape, s1.shape) )
+            squa_sum =  np.array( s0.dot( s1 ) ) [0][0]   # sum of diag square
+            squa_list = s0. dot( sp.diags(  np.array(s0) , [0]  ).toarray()  )  # square list of diag
+            adj.setdiag( 25023 * np.array(squa_list) / squa_sum ) # low loss 0.216 but low modul 0.717,0.726  ``` 0.7343 ``` 
+            
             adj = adj.tocsr()
             deg = np.ravel(adj.sum(1))
             deg_sqrt_inv = 1 / np.sqrt(deg)
