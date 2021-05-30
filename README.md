@@ -2,7 +2,6 @@
 
 ## codes
 ```
-theory of OTUCD is based on 基于网络嵌入方法的肠道微生物组大数据网络分析 [J]
 we use open source code of SDCN、NOCD、openne...
 https://github.com/thunlp/OpenNE
 https://github.com/shchur/overlapping-community-detection
@@ -35,7 +34,6 @@ It is a remarkable fact that NOCD is good at disjoint graphs, rather Spectral Cl
 ## Cites
 please cite papers as follows:
 ```
-李倩莹, 蔡云鹏, 张凯. 基于网络嵌入方法的肠道微生物组大数据网络分析 [J]. 集成技术, 2019, 8(5): 34-48.
 Li QY, Cai YP, Zhang K. Inferring gut microbial interaction network from microbiome data using network embedding
 algorithm [J]. Journal of Integration Technology, 2019, 8(5): 34-48.
 
