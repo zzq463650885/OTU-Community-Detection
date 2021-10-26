@@ -3,6 +3,7 @@ import scipy.sparse as sp
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from tqdm import tqdm
 
 from otucd.utils import to_sparse_tensor
 
@@ -84,15 +85,28 @@ class GCN(nn.Module):
         """Normalize adjacency matrix and convert it to a sparse tensor."""
         if sp.isspmatrix(adj):
             adj = adj.tolil()
-            adj.setdiag(1) # 0.7274
-            #     adj.setdiag(10) 
+            # adj.setdiag(1) # initial: 0.7274
             
+            '''
+            # 设置对角线数值
+            # adj.setdiag(10) # 零阶对角线
+            # adj.setdiag(adj.sum(1)/100) # order 1: low loss 0.216 but low modul 0.717,0.726  ``` 0.7343 ``` 
             # normalized diag( sum^2 )
-            #     s0, s1 = adj.sum(0), adj.sum(1)
-            #     print( 's0 shape:{}, s1 shape:{}'.format(s0.shape, s1.shape) )
-            #     squa_sum =  np.array( s0.dot( s1 ) ) [0][0]   # sum of diag square
-            #     squa_list = s0. dot( sp.diags(  np.array(s0) , [0]  ).toarray()  )  # square list of diag
-            #     adj.setdiag( 25023 * np.array(squa_list) / squa_sum ) # low loss 0.216 but low modul 0.717,0.726  ``` 0.7343 ``` 
+            s0, s1, od2_list = adj.sum(0), adj.sum(1), []
+            print( 'normalized diag( sum^2 ), s0 shape:{}, s1 shape:{}'.format(s0.shape, s1.shape) )
+            # squa_sum =  np.array( s0.dot( s1 ) ) [0][0]   # sum of diag square
+            # squa_list = s0. dot( sp.diags(  np.array(s0) , [0]  ).toarray()  )  # square list of diag
+            for i in tqdm(range(25023)):
+                # squa_sum += s1[i][0] # wrong 
+                # squa_list.append( [ s1[i][0] * s1[i][0] ] )
+                # od2_list.append( [ s1[i][0] / 200 + s1[i][0] * s1[i][0] / 2 ] )
+                od2_list.append( [ s1[i][0] / 100 - s1[i][0] * s1[i][0] / 50  ] )
+            od2_list = np.array( od2_list ) 
+            print('od2_list ok.')
+            # adj.setdiag( od2_list ) 
+            print('adj.setdiag ok.')
+            '''
+            adj.setdiag(adj.sum(1)/100)
             
             adj = adj.tocsr()
             deg = np.ravel(adj.sum(1))
@@ -102,6 +116,7 @@ class GCN(nn.Module):
             deg = adj.sum(1)
             deg_sqrt_inv = 1 / torch.sqrt(deg)
             adj_norm = adj * deg_sqrt_inv[:, None] * deg_sqrt_inv[None, :]
+        print('normalize_adj ok.')
         return to_sparse_tensor(adj_norm)
 
     def forward(self, x, adj):
